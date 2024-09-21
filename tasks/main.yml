@@ -1,2 +1,11 @@
 ---
-# tasks file for network
+- name: Configuring network interfaces.
+  template:
+    src: "interface.j2"
+    dest: "/etc/network/interfaces.d/{{ item.interface }}"
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=
+  with_items: "{{ network_interfaces }}"
+  notify:
+    - Restart networking

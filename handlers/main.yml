@@ -1,2 +1,6 @@
 ---
-# handlers file for network
+- name: Restart networking
+  systemd_service:
+    name: networking
+    state: restarted
+  when: ansible_os_family == 'Debian'
