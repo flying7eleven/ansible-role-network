@@ -1,4 +1,14 @@
 ---
+- name: Ensure that there there are no other network managing daemons.
+  systemd_service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - NetworkManager
+    - wpa_supplicant
+    - systemd-networkd
+
 - name: Configuring network interfaces.
   template:
     src: "interface.j2"
