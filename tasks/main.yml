@@ -6,7 +6,6 @@
     enabled: false
   loop:
     - NetworkManager
-    - wpa_supplicant
     - systemd-networkd
 
 - name: Configuring network interfaces.
@@ -17,5 +16,25 @@
     group: root
     mode: u=rw,g=r,o=
   with_items: "{{ network_interfaces }}"
-  notify:
-    - Restart networking
+#  notify:
+#    - Restart networking
+
+- name: Configuring wireless network interface.
+  template:
+    src: "wpa_supplicant.conf.j2"
+    dest: "/etc/wpa_supplicant/wpa_supplicant.conf"
+    owner: root
+    group: root
+    mode: u=rw,g=,o=
+#  notify:
+#    - Restart networking
+  when: wireless_network_interface is defined
+
+- name: Ensure that there wifi daemons are running.
+  systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  loop:
+    - wpa_supplicant
+  when: wireless_network_interface is defined

@@ -8,9 +8,10 @@ iface {{ item.interface }} inet static
 {% if item.nameservers is defined %}
     dns-nameservers {{ item.nameservers }}
 {% endif %}
-{% if item.ssid is defined %}
-    wpa-ssid {{ item.ssid }}
-    wpa-psk {{ item.psk }}
+{% if item.interface.startswith('wlan') %}
+    wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+{% else %}
+    # interface {{ item.interface }} is not a wireless interface; so no wpa-conf required
 {% endif %}
 
 {% if item.ipv6 is defined and item.netmask_v6 is defined %}
