@@ -1,0 +1,9 @@
+---
+driver:
+  name: docker
+platforms:
+  - name: instance
+    image: debian:bookworm
+    docker_file: Dockerfile.j2
+    pre_build_image: false
+    ansible_python_interpreter: "/usr/bin/python3"

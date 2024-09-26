@@ -1,0 +1,52 @@
+---
+- name: Verify Configuration
+  hosts: all
+  tasks:
+    - name: Ensure NetworkManager is stopped and disabled
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['NetworkManager'].state == 'stopped'
+          - ansible_facts.services['NetworkManager'].enabled == false
+
+    - name: Ensure systemd-networkd is stopped and disabled
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['systemd-networkd'].state == 'stopped'
+          - ansible_facts.services['systemd-networkd'].enabled == false
+
+    - name: Ensure network interface configuration files exist
+      ansible.builtin.stat:
+        path: "/etc/network/interfaces.d/{{ item.interface }}"
+      with_items: "{{ network_interfaces }}"
+      register: interface_files
+
+    - name: Assert that each network interface file exists and has correct permissions
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.pw_name == 'root'
+          - item.stat.gr_name == 'root'
+          - item.stat.mode == '0640'
+      loop: "{{ interface_files.results }}"
+
+    - name: Verify wireless configuration file
+      when: wireless_network_interface is defined
+      ansible.builtin.stat:
+        path: "/etc/wpa_supplicant/wpa_supplicant.conf"
+      register: wireless_config
+
+    - name: Assert that wireless configuration file exists and has correct permissions
+      when: wireless_network_interface is defined
+      ansible.builtin.assert:
+        that:
+          - wireless_config.stat.exists
+          - wireless_config.stat.pw_name == 'root'
+          - wireless_config.stat.gr_name == 'root'
+          - wireless_config.stat.mode == '0600'
+
+    - name: Ensure wpa_supplicant service is running and enabled
+      when: wireless_network_interface is defined
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['wpa_supplicant'].state == 'running'
+          - ansible_facts.services['wpa_supplicant'].enabled == true
