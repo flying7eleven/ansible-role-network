@@ -1,40 +1,88 @@
 ---
-- name: Ensure that there there are no other network managing daemons.
+- name: Install the required components for managing the network interfaces.
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - wpasupplicant
+    - systemd-resolved # has to be the last one; otherwise DNS resolving breaks right after install
+
+- name: Ensure that the required services are running.
+  systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - systemd-networkd
+    - systemd-resolved
+
+- name: Remove an potential existing resolv.conf.
+  file:
+    dest: "/etc/resolv.conf"
+    state: absent
+
+- name: Link the systemd resolved config to the one of the system.
+  file:
+    src: "/run/systemd/resolve/resolv.conf"
+    dest: "/etc/resolv.conf"
+    state: link
+
+- name: Configuring wireless network interface.
+  template:
+    src: "templates/wpa_supplicant.conf.j2"
+    dest: "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  notify:
+    - Restart wireless networking
+  when: wireless_network_interface is defined
+
+- name: Configuring network interfaces.
+  template:
+    src: "templates/interface.j2"
+    dest: "/etc/systemd/network/10-{{ item.interface }}.network"
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  with_items: "{{ network_interfaces }}"
+  notify:
+    - Restart wired networking
+
+- name: Enable all required wired services for network setup during boot.
+  systemd_service:
+    name: "{{ item }}"
+    enabled: yes
+  loop:
+    - systemd-resolved
+    - systemd-networkd
+
+- name: Enable all required wireless services for network setup during boot.
+  systemd_service:
+    name: "{{ item }}"
+    enabled: yes
+  loop:
+    - wpa_supplicant@wlan0
+  when: wireless_network_interface is defined
+
+- name: Ensure that there are no other network managing daemons running.
   systemd_service:
     name: "{{ item }}"
     state: stopped
     enabled: false
   loop:
     - NetworkManager
-    - systemd-networkd
+    - dhcpcd
+  register: stop_service
+  failed_when:
+    - stop_service.failed == true
+    - '"Could not find the requested service" not in stop_service.msg'
 
-- name: Configuring network interfaces.
-  template:
-    src: "interface.j2"
-    dest: "/etc/network/interfaces.d/{{ item.interface }}"
-    owner: root
-    group: root
-    mode: u=rw,g=r,o=
-  with_items: "{{ network_interfaces }}"
-#  notify:
-#    - Restart networking
-
-- name: Configuring wireless network interface.
-  template:
-    src: "wpa_supplicant.conf.j2"
-    dest: "/etc/wpa_supplicant/wpa_supplicant.conf"
-    owner: root
-    group: root
-    mode: u=rw,g=,o=
-#  notify:
-#    - Restart networking
-  when: wireless_network_interface is defined
-
-- name: Ensure that there wifi daemons are running.
-  systemd_service:
+- name: Uninstall all components which are not required anymore.
+  apt:
     name: "{{ item }}"
-    state: restarted
-    enabled: true
+    state: absent
+    autoremove: yes
   loop:
-    - wpa_supplicant
-  when: wireless_network_interface is defined
+    - network-manager
+    - dhcpcd

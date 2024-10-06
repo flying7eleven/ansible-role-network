@@ -1,6 +1,21 @@
 ---
-- name: Restart networking
+- name: Restart wired networking
   systemd_service:
-    name: networking
+    name: "{{ item }}"
     state: restarted
+    enabled: yes
+  loop:
+    - systemd-resolved
+    - systemd-networkd
+  when: ansible_os_family == 'Debian'
+
+- name: Restart wireless networking
+  systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  loop:
+    - systemd-resolved
+    - systemd-networkd
+    - wpa_supplicant@wlan0
   when: ansible_os_family == 'Debian'
