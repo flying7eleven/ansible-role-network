@@ -24,6 +24,11 @@ DNS={{ dns_server }}
 {% endif %}
 {% if item.v4 is defined %}
 
+{% if item.mandatory is defined %}
+[Link]
+RequiredForOnline={{ item.mandatory }}
+{% endif %}
+
 [DHCPv4]
 RouteMetric={{ item.v4.route_metric | default(100) }}
 {% endif %}
