@@ -16,16 +16,22 @@
     - systemd-networkd
     - systemd-resolved
 
-- name: Remove an potential existing resolv.conf.
+- name: Check if /etc/resolv.conf is linked or a simple file.
+  stat: path=/etc/resolv.conf
+  register: resolv_conf_state
+
+- name: Remove an existing /etc/resolv.conf.
   file:
     dest: "/etc/resolv.conf"
     state: absent
+  when: resolv_conf_state.stat.lnk_target is not defined or resolv_conf_state.stat.lnk_target != '/run/systemd/resolve/resolv.conf'
 
-- name: Link the systemd resolved config to the one of the system.
+- name: Link the systemd-resolved config to the one of the system.
   file:
     src: "/run/systemd/resolve/resolv.conf"
     dest: "/etc/resolv.conf"
     state: link
+  when: resolv_conf_state.stat.lnk_target is not defined or resolv_conf_state.stat.lnk_target != '/run/systemd/resolve/resolv.conf'
 
 - name: Configuring wireless network interface.
   template:
