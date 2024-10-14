@@ -83,14 +83,36 @@
     - Restart wireless networking
   when: wireless_network_interface is defined
 
-- name: Configuring network interfaces.
+- name: Removing wireless network interface configuration.
+  file:
+    path: "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
+    state: absent
+  when: wireless_network_interface is not defined
+
+#- name: Detect if there are network configurations which are not managed by this playbook.
+#  ansible.builtin.find:
+#    paths: /etc/systemd/network/
+#    patterns: "*.network"
+#  register: old_configs
+#  changed_when: false
+#
+#- name: Remove old configuration files.
+#  ansible.builtin.file:
+#    path: "{{ item.path }}"
+#    state: absent
+#  loop: "{{ old_configs.files }}"
+#  when: old_configs.matched > 0
+
+- name: Configuring network all interfaces.
   template:
     src: "templates/interface.j2"
     dest: "/etc/systemd/network/10-{{ item.interface }}.network"
+#    dest: "/etc/systemd/network/{{ '%02d' | format(10 * item.0) }}-{{ item.1.interface }}.network"
     owner: root
     group: root
     mode: u=rw,g=r,o=r
   with_items: "{{ network_interfaces }}"
+#  with_indexed_items: "{{ network_interfaces }}"
   notify:
     - Restart wired networking
 
