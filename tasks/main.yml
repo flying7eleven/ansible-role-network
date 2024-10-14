@@ -1,10 +1,35 @@
 ---
-- name: Install the required components for managing the network interfaces.
+- name: Ensure that wpa_supplicant is disabled since WiFi should not be configured.
+  systemd_service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - wpasupplicant@wlan0 # TODO: is it also poissible to delete ALL wpa_supplicant@ entries?
+    - wpasupplicant
+  when: wireless_network_interface is not defined
+
+- name: Remove network components which are not required since WiFi should not be configured.
+  apt:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - wpasupplicant
+  when: wireless_network_interface is not defined
+
+- name: Install wireless network components since WiFi should be configured.
   apt:
     name: "{{ item }}"
     state: present
   loop:
     - wpasupplicant
+  when: wireless_network_interface is defined
+
+- name: Install the required components for managing all network interfaces.
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
     - systemd-resolved # has to be the last one; otherwise DNS resolving breaks right after install
 
 - name: Ensure that the required services are running.
@@ -20,7 +45,7 @@
   stat: path=/etc/resolv.conf
   register: resolv_conf_state
 
-- name: Remove an existing /etc/resolv.conf.
+- name: Remove an potential existing resolv.conf.
   file:
     dest: "/etc/resolv.conf"
     state: absent
