@@ -1,28 +1,41 @@
 ---
-- name: Ensure that wpa_supplicant is disabled since WiFi should not be configured.
-  systemd_service:
-    name: "{{ item }}"
+- name: Disable wpa_supplicant service (since WiFi should not be configured).
+  ansible.builtin.systemd:
+    name: wpa_supplicant
+    enabled: false
     state: stopped
-    enabled: no
-  loop:
-    - wpasupplicant@wlan0 # TODO: is it also poissible to delete ALL wpa_supplicant@ entries?
-    - wpasupplicant
+  ignore_errors: true  # ignore errors if service not found
+  failed_when: false  # do not fail if service not found
+  when: wireless_network_interface is not defined
+
+- name: Find all device-specific wpa_supplicant services (e.g., wpa_supplicant@wlan0).
+  ansible.builtin.shell: systemctl list-units --all --type=service | grep 'wpa_supplicant@'
+  register: wpa_services
+  failed_when: false  # do not fail if grep finds no matching services
+  ignore_errors: true
+  when: wireless_network_interface is not defined
+
+- name: Disable device-specific wpa_supplicant services.
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ wpa_services.stdout_lines | map('regex_search', 'wpa_supplicant@[\\w]+\\.service') | select('string') | list }}"
+  when: wpa_services.stdout_lines is defined and wpa_services.stdout_lines | length > 0
+  ignore_errors: true
+  failed_when: false
   when: wireless_network_interface is not defined
 
 - name: Remove network components which are not required since WiFi should not be configured.
   apt:
-    name: "{{ item }}"
+    name: "wpasupplicant"
     state: absent
-  loop:
-    - wpasupplicant
   when: wireless_network_interface is not defined
 
 - name: Install wireless network components since WiFi should be configured.
   apt:
-    name: "{{ item }}"
+    name: "wpasupplicant"
     state: present
-  loop:
-    - wpasupplicant
   when: wireless_network_interface is defined
 
 - name: Install the required components for managing all network interfaces.
