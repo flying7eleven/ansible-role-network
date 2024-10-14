@@ -13,6 +13,7 @@
   register: wpa_services
   failed_when: false  # do not fail if grep finds no matching services
   ignore_errors: true
+  changed_when: false
   when: wireless_network_interface is not defined
 
 - name: Disable device-specific wpa_supplicant services.
